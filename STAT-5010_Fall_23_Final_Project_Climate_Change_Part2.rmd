@@ -1,0 +1,647 @@
+# Final Project - Part 2
+
+
+Datasets: 
+
+https://www.kaggle.com/datasets/econdata/climate-change/data
+https://www.e-education.psu.edu/meteo815/node/525
+https://ourworldindata.org/co2-dataset-sources
+
+```{R}
+climate_data = read.csv(("C:/Users/mgrod/Documents/R_Data_Science/Final_Project_Stats/Final_Project/climate_change_yearly_averages.csv"), sep = ",")
+
+summary(climate_data)
+```
+```{r}
+#plot each variable against sea level to inspect individual relationships
+
+
+#MEI vs. Sea.Level
+plot(climate_data$MEI,climate_data$Sea.Level,xlab="MEI",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(-1,2))
+
+#CO2 vs. Sea.Level
+plot(climate_data$CO2,climate_data$Sea.Level,xlab="CO2",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(340,382))
+
+#CH4 vs. Sea.Level
+plot(climate_data$CH4,climate_data$Sea.Level,xlab="CH4",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(1640,1800))
+
+#N2O vs. Sea.Level
+plot(climate_data$N2O,climate_data$Sea.Level,xlab="N2O",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(300,320))
+
+#CFC.11 vs. Sea.Level
+plot(climate_data$CFC.11,climate_data$Sea.Level,xlab="CFC.11",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(193,272))
+
+#CFC.12 vs. Sea.Level
+plot(climate_data$CFC.12,climate_data$Sea.Level,xlab="CFC.12",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(356,544))
+
+#TSI vs. Sea.Level
+plot(climate_data$TSI,climate_data$Sea.Level,xlab="TSI",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(1365,1367))
+
+#Aerosols vs. Sea.Level
+plot(climate_data$Aerosols,climate_data$Sea.Level,xlab="Aerosols",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(0,0.15))
+
+#Temp vs. Sea.Level
+plot(climate_data$Temp,climate_data$Sea.Level,xlab="Temp",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(-0.1,0.6))
+
+#CO2 Emissions vs. Sea.Level
+plot(climate_data$CO2.Emissions,climate_data$Sea.Level,xlab="CO2 Emissions",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(18,31))
+```
+
+
+```{R}
+
+#regression fit
+fit <- lm(Sea.Level ~ MEI+CO2+CH4+N2O+CFC.11+CFC.12+TSI+Aerosols+Temp+CO2.Emissions, data=climate_data)
+summary(fit)
+
+
+
+#Look for violations of Constant Variance
+#########################################
+
+#plot all residuals
+plot (fitted (fit), residuals (fit), xlab="Fitted", ylab="Residuals")
+abline (h=0)
+plot (fitted (fit), abs (residuals (fit)),
+xlab="Fitted", ylab="|Residuals|")
+
+#plot residuals against individual predictors on one plot side-by-side and absolute values on four individual plots
+car::residualPlots(fit, pch=20, col="red", fitted = F, ask = F, layout = c(3,2), tests = F, quadratic = F)
+plot (climate_data$MEI, abs(residuals (fit)), xlab="MEI", ylab="}|Residuals|")
+plot (climate_data$CO2, abs(residuals (fit)), xlab="CO2", ylab="}|Residuals|")
+plot (climate_data$CH4, abs(residuals (fit)), xlab="CH4", ylab="}|Residuals|")
+plot (climate_data$N2O, abs(residuals (fit)), xlab="N2O", ylab="}|Residuals|")
+plot (climate_data$CFC.11, abs(residuals (fit)), xlab="CFC.11", ylab="}|Residuals|")
+plot (climate_data$CFC.12, abs(residuals (fit)), xlab="CFC.12", ylab="}|Residuals|")
+plot (climate_data$TSI, abs(residuals (fit)), xlab="TSI", ylab="}|Residuals|")
+plot (climate_data$Aerosols, abs(residuals (fit)), xlab="Aerosols", ylab="}|Residuals|")
+plot (climate_data$Temp, abs(residuals (fit)), xlab="Temp", ylab="}|Residuals|")
+plot (climate_data$CO2.Emissions, abs(residuals (fit)), xlab="CO2.Emissions", ylab="}|Residuals|")
+
+#two different populations can be seen for CF.12 below and above 500, let's test them
+var.test (residuals(fit)[climate_data$CFC.12>500], residuals(fit)[climate_data$CFC.12<=500])
+#no significant difference detected by variance test indicating constant variance
+
+
+
+#Look for violations of Normality
+#########################################
+res <- fit$residuals
+#histogram of residuals
+hist(res, xlab = "Residuals", probability = T, ylim = c(0, 6))
+#empirical density
+lines(density(res, na.rm=T), lwd = 2, col = "red")
+#best fitting normal curve
+curve(dnorm(x, mean = mean(res, na.rm=T), sd = sd(res, na.rm=T)), lty = 2, lwd = 2, add = TRUE, col = "blue")
+#small deviation from Normality seen with longer lower tail 
+
+#ordered values of the residuals vs quantiles of the standard normal distribution (Q-Q plot)
+qqnorm(as.numeric(res), col="red", pch=20)
+qqline(as.numeric(res), col="blue", lty=1, lwd=1)
+#deviation from standard normal distribution seen in the bottom quantile
+
+#The Shapiro-Wilk test 
+shapiro.test (residuals (fit))
+#no significant violation of Normality detected
+
+
+#Look for violations of Linearity
+#########################################
+#generate component-plus-residual plot for each predictor
+car::crPlots(fit, terms = . ~ MEI+CO2+CH4+N2O+CFC.11+CFC.12+TSI+Aerosols+Temp+CO2.Emissions, pch=20, col="red")
+#small deviation from linearity seen for TSI and Aerosols
+
+
+#Look for Correlations
+#########################################
+#make an index plot of the residuals. Look for longer runs of residuals above or below the line.
+plot (residuals (fit), ylab="Residuals")
+abline (h=0)
+#no significant correlation seen
+
+#check for correlation using a regression of successive residuals
+summary(lm(residuals(fit)[-2] ~ 1+residuals (fit) [-1]))
+#significant correlation seen
+
+#compute the Durbin-Watson statistic
+library(lmtest)
+dwtest (Sea.Level ~ MEI+CO2+CH4+N2O+CFC.11+CFC.12+TSI+Aerosols+Temp+CO2.Emissions, data=climate_data)
+#no significant correlation seen
+
+
+#Check measurement validity 
+#########################################
+
+#Inspect histograms
+hist(climate_data$MEI, main = "", xlab = "MEI")
+hist(climate_data$CO2, main = "", xlab = "CO2")
+hist(climate_data$CH4, main = "", xlab = "CH4")
+hist(climate_data$N2O, main = "", xlab = "N2O")
+hist(climate_data$CFC.11, main = "", xlab = "CFC.11")
+hist(climate_data$CFC.12, main = "", xlab = "CFC.12")
+hist(climate_data$TSI, main = "", xlab = "TSI")
+hist(climate_data$Aerosols, main = "", xlab = "Aerosols")
+hist(climate_data$Temp, main = "", xlab = "Temp")
+hist(climate_data$CO2.Emissions, main = "", xlab = "CO2.Emissions")
+
+
+```
+
+
+
+
+
+
+```{R}
+
+#Look for outliers
+#########################################
+#Compute Studentized residuals
+resstudent <- rstudent(fit)
+#Plot Studentized residuals
+plot (resstudent, ylab="Studentized Residuals")
+abline (h=0)
+#test Studentized residuals (no observations indicated to be an outlier)
+car::outlierTest(fit, n.max = Inf)
+
+
+#Look for potentially influential points
+#########################################
+#compute and inspect Cook's statistics
+cook <- cooks.distance (fit)
+cook
+library(ggplot2)
+library(faraway)
+halfnorm (cook, 3, ylab="Cook's distances")
+
+#point 5 with the largest Cook's distances is indicated as the most influential
+
+#exclude point 5 with the largest Cook's distance and therefore the most influential and re-fit the data
+fit_minus_5 <- lm (Sea.Level ~ MEI+CO2+CH4+N2O+CFC.11+CFC.12+TSI+Aerosols+Temp+CO2.Emissions, climate_data, subset=(cook < max (cook)))
+summary (fit_minus_5)
+
+#compare with fitting the full dataset
+fit_full <- lm (Sea.Level ~ MEI+CO2+CH4+N2O+CFC.11+CFC.12+TSI+Aerosols+Temp+CO2.Emissions, data=climate_data)
+summary (fit_full)
+
+#the model with point 5 removed produces slightly better fit than the full model as evidenced by:
+# 1. higher R-squared value
+# 2. higher F-statistic
+
+
+#Look for leverage points
+#########################################
+#compute the leverage value for all the observations
+leverage = hatvalues(fit)
+
+#plot leverage values
+plot(leverage)
+
+library(car)
+
+#plot residuals, leverage, and Cook's distance 
+influencePlot(fit)
+
+# point 5 is being identified as high leverage point
+
+
+#Look again for potentially influential points
+#########################################
+#compute and inspect Cook's statistics
+cook <- cooks.distance (fit_minus_5)
+halfnorm (cook, 3, ylab="Cook's distances")
+
+
+
+#Look again for leverage points
+#########################################
+#compute the leverage value for all the observations
+leverage = hatvalues(fit_minus_5)
+
+#plot leverage values
+plot(leverage)
+
+#plot residuals, leverage, and Cook's distance 
+influencePlot(fit_minus_5)
+```
+
+An influential observation is an observation that if included in the fit will modify the estimated coefficients of the regression model by a significant amount. This can be quantified by the Cook’s distance which measures how much the estimated coefficients change when an observation is removed from the regression model.
+
+A high leverage point is an observation with a value of the independent variables far from the line of best fit. A point could be either influential or high leverage or both.
+ 
+An outlier is an observation with a large residual relative to its standard deviation. An outlier usually signifies a measurement error.
+
+
+```{r}
+#create test and training datasets
+library(MASS)
+data(climate_data)
+
+set.seed(11)
+n = floor(0.8 * nrow(climate_data))
+index = sample(seq_len(nrow(climate_data)), size = n)
+
+train = climate_data[index, ]
+test = climate_data[-index, ]
+head(train)
+summary(train)
+head(test)
+summary(test)
+
+```
+```{r}
+# fit a model to the training dataset
+lm_train <- lm(Sea.Level ~ MEI+CO2+CH4+N2O+CFC.11+CFC.12+TSI+Aerosols+Temp+CO2.Emissions, data=train)
+summary(lm_train)
+
+par(mfrow = c(2,2))
+plot(fit)
+df = data.frame(x = fitted(lm_train), y = stdres(lm_train))
+ggplot(df, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE1 = mean((test$Temp - predict.lm(lm_train, test))^2)
+MPSE1
+
+```
+```{r}
+#remove MEI
+
+lm_train2 <- update(lm_train, .~. - MEI)
+summary(lm_train2)
+
+par(mfrow = c(2,2))
+plot(lm_train2)
+df2 = data.frame(x = fitted(lm_train2), y = stdres(lm_train2))
+ggplot(df2, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE2 = mean((test$Temp - predict.lm(lm_train2, test))^2)
+MPSE2
+
+#This second linear model (lm_train2) is better as it has higher F-statistic, and R-squared and smaller MSPE than lm_train
+
+```
+```{r}
+#remove CH4
+
+lm_train3 <- update(lm_train2, .~. - CH4)
+summary(lm_train3)
+
+par(mfrow = c(2,2))
+plot(lm_train3)
+df3 = data.frame(x = fitted(lm_train3), y = stdres(lm_train3))
+ggplot(df3, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE3 = mean((test$Temp - predict.lm(lm_train3, test))^2)
+MPSE3
+
+#This third linear model (lm_train3) is better as it has higher F-statistic, and R-squared than lm_train2. Also more coefficients are significant. However, MPSE is higher.
+```
+```{r}
+#remove Temp
+
+lm_train4 <- update(lm_train3, .~. - Temp)
+summary(lm_train4)
+
+par(mfrow = c(2,2))
+plot(lm_train4)
+df4 = data.frame(x = fitted(lm_train4), y = stdres(lm_train4))
+ggplot(df4, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE4 = mean((test$Temp - predict.lm(lm_train4, test))^2)
+MPSE4
+
+#This fourth linear model (lm_train4) is better as it has higher F-statistic, and R-squared than lm_train3. Also coefficients are more significant.  However, MPSE is higher.
+
+```
+
+
+```{r}
+#calculate AIC and BIC for each of the three models
+n = dim(test)[1]; 
+
+#LM (lm_train)
+rss <- sum(resid(lm_train)^2)
+AIC_lm_train = 2*6 + n*log(rss/n)
+BIC_lm_train = log(n)*6 + n*log(rss/n)
+AIC_lm_train
+BIC_lm_train
+
+#LM (lm_train2)
+rss <- sum(resid(lm_train2)^2)
+AIC_lm_train2 = 2*6 + n*log(rss/n)
+BIC_lm_train2 = log(n)*6 + n*log(rss/n)
+AIC_lm_train2
+BIC_lm_train2
+
+#LM (lm_train3)
+rss <- sum(resid(lm_train3)^2)
+AIC_lm_train3 = 2*6 + n*log(rss/n)
+BIC_lm_train3 = log(n)*6 + n*log(rss/n)
+AIC_lm_train3
+BIC_lm_train3
+
+
+#LM (lm_train4)
+rss <- sum(resid(lm_train4)^2)
+AIC_lm_train4 = 2*6 + n*log(rss/n)
+BIC_lm_train4 = log(n)*6 + n*log(rss/n)
+AIC_lm_train4
+BIC_lm_train4
+
+
+
+#Both BIC and AIC indicate that the model with all variables (lm_train) is the best choice
+```
+```{r}
+require(MASS)
+VIFs = vif(lm_train)
+VIFs
+K = kappa(lm_train)
+K
+cor(model.matrix(lm_train)[,-1])
+```
+```{r}
+col4 = colorRampPalette(c("black", "darkgrey", "grey","#CFB87C"))
+#corrplot(cor(climate_data[2:12]), method = "ellipse", col = col4(12),  addCoef.col = "black", tl.col = "black", number.cex=0.75)
+
+
+```
+```{r}
+#CO2 Emissions and CO2 are highly correlated at 0.98. We should retain only one of the two going forward.
+#CO2 has the largest VIF. Let's remove it.
+lm_train5 <- update(lm_train, .~. - CO2)
+summary(lm_train5)
+
+par(mfrow = c(2,2))
+plot(lm_train5)
+df5 = data.frame(x = fitted(lm_train4), y = stdres(lm_train5))
+ggplot(df5, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE5 = mean((test$Temp - predict.lm(lm_train5, test))^2)
+MPSE5
+```
+```{r}
+VIFs = vif(lm_train5)
+VIFs
+K = kappa(lm_train5)
+K
+cor(model.matrix(lm_train5)[,-1])
+
+```
+```{r}
+
+#CFC.12 has the largest VIF. Let's remove it.
+lm_train6 <- update(lm_train5, .~. - CFC.12)
+summary(lm_train6)
+
+par(mfrow = c(2,2))
+plot(lm_train6)
+df6 = data.frame(x = fitted(lm_train6), y = stdres(lm_train6))
+ggplot(df6, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE6 = mean((test$Temp - predict.lm(lm_train6, test))^2)
+MPSE6
+
+#Let's check for additional collinearities
+VIFs = vif(lm_train6)
+VIFs
+K = kappa(lm_train6)
+K
+cor(model.matrix(lm_train6)[,-1])
+
+```
+```{r}
+
+#CH4 has the largest VIF. Let's remove it.
+lm_train7 <- update(lm_train6, .~. - CH4)
+summary(lm_train7)
+
+par(mfrow = c(2,2))
+plot(lm_train7)
+df7 = data.frame(x = fitted(lm_train7), y = stdres(lm_train7))
+ggplot(df7, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE7 = mean((test$Temp - predict.lm(lm_train7, test))^2)
+MPSE7
+
+#Let's check for additional collinearities
+VIFs = vif(lm_train7)
+VIFs
+K = kappa(lm_train7)
+K
+cor(model.matrix(lm_train7)[,-1])
+```
+```{r}
+#CO2 Emissions, N2O and Temp are all highly correlated. 
+#CO2 Emission has the highest VIF. Let's remove it going forward.
+
+lm_train8 <- update(lm_train7, .~. - CO2.Emissions)
+summary(lm_train8)
+
+par(mfrow = c(2,2))
+plot(lm_train8)
+df8 = data.frame(x = fitted(lm_train8), y = stdres(lm_train8))
+ggplot(df8, aes(x = x, y = y)) + 
+    geom_point() + 
+    theme_bw() + 
+    geom_hline(yintercept = 0)
+
+#MSPE with test data
+MPSE8 = mean((test$Temp - predict.lm(lm_train8, test))^2)
+MPSE8
+
+#Let's check for additional collinearities
+VIFs = vif(lm_train8)
+VIFs
+K = kappa(lm_train8)
+K
+cor(model.matrix(lm_train8)[,-1])
+```
+```{r}
+#fit the reduced model to the entire dataset
+fit_final <- lm(Sea.Level ~ MEI+N2O+CFC.11+TSI+Aerosols+Temp, data=climate_data)
+summary(fit_final)
+
+#we don't see a good fit. Let's try some non-linear transformations next
+```
+
+```{r}
+
+#plot each variable against sea level to inspect individual relationships
+
+
+#MEI vs. Sea.Level
+plot(climate_data$MEI,climate_data$Sea.Level,xlab="MEI",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(-1,2))
+
+#CO2 vs. Sea.Level
+plot(climate_data$CO2,climate_data$Sea.Level,xlab="CO2",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(340,382))
+
+#CH4 vs. Sea.Level
+plot(climate_data$CH4,climate_data$Sea.Level,xlab="CH4",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(1640,1800))
+
+#N2O vs. Sea.Level
+plot(climate_data$N2O,climate_data$Sea.Level,xlab="N2O",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(300,320))
+
+#CFC.11 vs. Sea.Level
+plot(climate_data$CFC.11,climate_data$Sea.Level,xlab="CFC.11",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(193,272))
+
+#CFC.12 vs. Sea.Level
+plot(climate_data$CFC.12,climate_data$Sea.Level,xlab="CFC.12",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(356,544))
+
+#TSI vs. Sea.Level
+plot(climate_data$TSI,climate_data$Sea.Level,xlab="TSI",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(1365,1367))
+
+#Aerosols vs. Sea.Level
+plot(climate_data$Aerosols,climate_data$Sea.Level,xlab="Aerosols",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(0,0.15))
+
+#Temp vs. Sea.Level
+plot(climate_data$Temp,climate_data$Sea.Level,xlab="Temp",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(-0.1,0.6))
+
+#CO2 Emissions vs. Sea.Level
+plot(climate_data$CO2.Emissions,climate_data$Sea.Level,xlab="CO2 Emissions",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(18,31))
+```
+```{r}
+# try transformations on non-linear data
+
+climate_data2 = climate_data
+summary(climate_data)
+
+#center
+climate_data2$CH4 = scale(climate_data2$CH4, scale=F)
+climate_data2$CFC.12 = scale(climate_data2$CFC.12, scale=F)
+climate_data2$CO2.Emissions = scale(climate_data2$CO2.Emissions, scale=F)
+summary(climate_data2)
+
+#CH4^2 vs. Sea.Level (the relationship is now linear)
+plot((climate_data2$CH4+50)^2,climate_data2$Sea.Level,xlab="CH4",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(0,10000))
+
+#CFC.12^2 vs. Sea.Level (the relationship is now more linear)
+plot((climate_data2$CFC.12+136)^2,climate_data2$Sea.Level,xlab="CFC.12",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(0,40000))
+
+#log(Aerosols) vs. Sea.Level (the relationship is now linear)
+plot(log(climate_data2$Aerosols),climate_data2$Sea.Level,xlab="Aerosols",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(log(0.002),log(0.122)))
+
+#cube root: (CO2.Emissions)^1/3 vs. Sea.Level (the relationship is now linear)
+plot(sign(climate_data2$CO2.Emissions)*abs(climate_data2$CO2.Emissions)^(1/3),climate_data2$Sea.Level,xlab="CO2.Emissions",pch=20,ylab="Sea Level", ylim=c(5,8),xlim=c(-3,3))
+
+
+#transform the data
+climate_data2$CH4 = (climate_data2$CH4+50)^2
+climate_data2$CFC.12 = (climate_data2$CFC.12+136)^2
+climate_data2$Aerosols = log(climate_data2$Aerosols)
+climate_data2$CO2.Emissions = sign(climate_data2$CO2.Emissions)*abs(climate_data2$CO2.Emissions)^(1/3)
+summary(climate_data2)
+```
+```{r}
+
+#regression fit on the transformed data
+fit_transformed <- lm(Sea.Level ~ MEI+CO2+CH4+N2O+CFC.11+CFC.12+TSI+Aerosols+Temp+CO2.Emissions, data=climate_data2)
+summary(fit_transformed)
+
+```
+```{r}
+col4 = colorRampPalette(c("black", "darkgrey", "grey","#CFB87C"))
+corrplot(cor(climate_data2[2:12]), method = "ellipse", col = col4(12),  addCoef.col = "black", tl.col = "black", number.cex=0.75)
+
+
+
+```
+```{r}
+
+#regression fit on the transformed data (minus CO2, which is correlated with CO2.Emissions, and CFC.12 which is highly non-linear)
+fit_transformed2 <- lm(Sea.Level ~ MEI+CH4+N2O+CFC.11+TSI+Aerosols+Temp+CO2.Emissions, data=climate_data2)
+summary(fit_transformed2)
+
+```
+```{r}
+#Let's check for collinearities
+VIFs = vif(fit_transformed2)
+VIFs
+K = kappa(fit_transformed2)
+K
+cor(model.matrix(fit_transformed2)[,-1])
+
+```
+```{r}
+
+#Let's also remove N2O, which is correlated with CO2.Emissions, and has large VIF
+fit_transformed3 <- lm(Sea.Level ~ MEI+CH4+CFC.11+TSI+Aerosols+Temp+CO2.Emissions, data=climate_data2)
+summary(fit_transformed3)
+```
+```{r}
+#Let's check for collinearities
+VIFs = vif(fit_transformed3)
+VIFs
+K = kappa(fit_transformed3)
+K
+cor(model.matrix(fit_transformed3)[,-1])
+
+
+```
+```{r}
+
+#Let's also remove CH4, which is correlated with CO2.Emissions, and has large VIF
+fit_transformed4 <- lm(Sea.Level ~ MEI+CFC.11+TSI+Aerosols+Temp+CO2.Emissions, data=climate_data2)
+summary(fit_transformed4)
+
+```
+```{r}
+#Let's check for collinearities
+VIFs = vif(fit_transformed4)
+VIFs
+K = kappa(fit_transformed4)
+K
+cor(model.matrix(fit_transformed4)[,-1])
+
+
+```
+
+```{r}
+#Let's also remove TSI, which is not statistically significant
+fit_transformed5 <- lm(Sea.Level ~ MEI+CFC.11+Aerosols+Temp+CO2.Emissions, data=climate_data2)
+summary(fit_transformed5)
+
+
+
+```
+
+```{r}
+#Let's check for collinearities
+VIFs = vif(fit_transformed5)
+VIFs
+K = kappa(fit_transformed5)
+K
+cor(model.matrix(fit_transformed5)[,-1])
+
+#no significant collinearities remain
+
+```
+
